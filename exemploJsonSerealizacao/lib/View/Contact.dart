@@ -1,10 +1,17 @@
+import 'package:exemploJsonSerealizacao/Controller/User_controller.dart';
+import 'package:exemploJsonSerealizacao/Data/CardHelper.dart';
+
 import 'package:exemploJsonSerealizacao/Data/Users.dart';
 import 'package:exemploJsonSerealizacao/Model/Model.dart';
+import 'package:exemploJsonSerealizacao/View/ListaCartao/PageListaCartao.dart';
+import 'package:exemploJsonSerealizacao/View/PageCard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_sticky_header/flutter_sticky_header.dart';
+import 'package:provider/provider.dart';
 
 class ContactUsers extends StatefulWidget {
   ContactUsers({Key key, this.title}) : super(key: key);
+
   //inicial class atributos about this view
   final String title;
 
@@ -14,46 +21,60 @@ class ContactUsers extends StatefulWidget {
 
 class _ContactUsersState extends State<ContactUsers> {
   List<User> _users;
-  bool _loading;
 
-  void _getUsers() async {
-    await Service.getUsers().then((users) {
+  final helper = DataHelper();
+
+  void getUserProvaider() {
+    final controller = Provider.of<ControllerProvaider>(context, listen: false);
+    PicPay.getUsers().then((user) {
       setState(() {
-        _users = users;
-        _loading = false;
+        controller.setListUser(user);
+        _users = controller.getListUser();
       });
     });
   }
 
   @override
-  void initState() {
-    super.initState();
-    _loading = true;
-    _getUsers();
+  void dispose() {
+    super.dispose();
   }
 
-  Container _getListCardUser(User user) {
+  @override
+  void initState() {
+    super.initState();
+    getUserProvaider();
+    helper.getAllCard().then((list){
+       print(list);
+    });  
+    
+  }
+
+  Container _getListCardUser(
+    user,
+    contex,
+  ) {
     return Container(
-      color: Color.fromRGBO(27, 21, 21, 1),
+      color: Colors.black,
       child: Card(
         elevation: 0.0,
-        color: Color.fromRGBO(27, 21, 21, 1),
+        color: Colors.black,
         child: ListTile(
           onTap: () {
-            print("clicado");
+            Navigator.push(contex,
+                new MaterialPageRoute(builder: (contex) => PageCard(user)));
           },
-          title: _getTextUserTile(color: Colors.white, user: user.username),
+          title: _getTextUserTiles(color: Colors.white, user: user.username),
           leading: CircleAvatar(
             backgroundImage: NetworkImage(user.img),
             maxRadius: 25,
           ),
-          subtitle: _getTextUserTile(color: Colors.grey, user: user.name),
+          subtitle: _getTextUserTiles(color: Colors.grey, user: user.name),
         ),
       ),
     );
   }
 
-  Text _getTextUserTile({Color color, String user}) {
+  Text _getTextUserTiles({Color color, String user}) {
     return Text(
       user,
       style: TextStyle(color: color, fontSize: 16),
@@ -63,14 +84,15 @@ class _ContactUsersState extends State<ContactUsers> {
   //RETURNE A TREE OF COMPONENTES IN THE PAGE
   @override
   Widget build(BuildContext context) {
-    const color = Color.fromRGBO(27, 21, 21, 1);
+    const color = Colors.black;
+    final controller = Provider.of<ControllerProvaider>(context);
     return _users == null
         ? Center(
-          child: Container(
-            child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.green)),
-          ),
-        )
+            child: Container(
+              child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green)),
+            ),
+          )
         : CustomScrollView(
             slivers: <Widget>[
               SliverSafeArea(
@@ -79,6 +101,19 @@ class _ContactUsersState extends State<ContactUsers> {
                 sliver: SliverAppBar(
                   pinned: true,
                   expandedHeight: 120,
+                  actions: <Widget>[
+                    IconButton(
+                      icon: Icon(
+                        Icons.call_to_action,
+                        color: Colors.grey[500],
+                      ),
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(
+                          builder: (context) => PageCartaoDeCredito(),
+                        ));
+                      },
+                    ),
+                  ],
                   flexibleSpace: FlexibleSpaceBar(
                     collapseMode: CollapseMode.none,
                     background: Stack(
@@ -113,10 +148,17 @@ class _ContactUsersState extends State<ContactUsers> {
                       child: Card(
                         color: color,
                         child: TextField(
+                          onTap: () {},
+                          onChanged: (value) {
+                            controller.serarch(value);
+                            _users = controller.newListaBusca;
+                          },
                           style: TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: "A quem voce deseja pagar?",
                             hintStyle: TextStyle(color: Colors.white),
+                            fillColor: Colors.brown,
+                            filled: true,
                             prefixIcon: Icon(
                               Icons.search,
                               color: Colors.white,
@@ -139,7 +181,7 @@ class _ContactUsersState extends State<ContactUsers> {
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate((context, index) {
                       User user = _users[index];
-                      return _getListCardUser(user);
+                      return _getListCardUser(user, context);
                     }, childCount: _users.length),
                   )),
             ],
